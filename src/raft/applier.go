@@ -4,28 +4,27 @@ import "time"
 
 func (rf *Raft) apply() {
 	for !rf.killed() {
-		rf.mu.Lock()
+		rf.lock()
 		oldApply := rf.lastApplied
 		oldCommit := rf.commitIndex
 
-		//after crash
 		if oldApply < rf.lastIndex {
 			rf.lastApplied = rf.lastIndex
 			rf.commitIndex = rf.lastIndex
-			rf.mu.Unlock()
+			rf.unlock()
 			time.Sleep(time.Millisecond * 30)
 			continue
 		}
 		if oldCommit < rf.lastIndex {
 
 			rf.commitIndex = rf.lastIndex
-			rf.mu.Unlock()
+			rf.unlock()
 			time.Sleep(time.Millisecond * 30)
 			continue
 		}
 
 		if oldApply == oldCommit || (oldCommit-oldApply) >= len(rf.logs) {
-			rf.mu.Unlock()
+			rf.unlock()
 			time.Sleep(time.Millisecond * 5)
 			continue
 		}
@@ -33,7 +32,7 @@ func (rf *Raft) apply() {
 
 		copy(entry, rf.logs[oldApply+1-rf.lastIndex:oldCommit+1-rf.lastIndex])
 
-		rf.mu.Unlock()
+		rf.unlock()
 		for key, value := range entry {
 			rf.applyChan <- ApplyMsg{
 				CommandValid: true,
@@ -42,7 +41,7 @@ func (rf *Raft) apply() {
 			}
 		}
 
-		rf.mu.Lock()
+		rf.lock()
 		if rf.lastApplied < oldCommit {
 			rf.lastApplied = oldCommit
 		}
@@ -50,7 +49,28 @@ func (rf *Raft) apply() {
 			rf.commitIndex = rf.lastApplied
 		}
 
-		rf.mu.Unlock()
+		rf.unlock()
 		time.Sleep(time.Millisecond * 30)
 	}
+}
+
+// as each Raft peer becomes aware that successive log entries are
+// committed, the peer should send an ApplyMsg to the service (or
+// tester) on the same server, via the applyCh passed to Make(). set
+// CommandValid to true to indicate that the ApplyMsg contains a newly
+// committed log entry.
+//
+// in part 2D you'll want to send other kinds of messages (e.g.,
+// snapshots) on the applyCh, but set CommandValid to false for these
+// other uses.
+type ApplyMsg struct {
+	CommandValid bool
+	Command      interface{}
+	CommandIndex int
+
+	// For 2D:
+	SnapshotValid bool
+	Snapshot      []byte
+	SnapshotTerm  int
+	SnapshotIndex int
 }
