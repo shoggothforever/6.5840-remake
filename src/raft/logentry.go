@@ -23,11 +23,3 @@ func (rf *Raft) getLogTerm(index int) int {
 	}
 	return rf.lastTerm
 }
-
-type ByKey []int
-
-func (b ByKey) Len() int {
-	return len(b)
-}
-func (b ByKey) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
-func (b ByKey) Less(i, j int) bool { return b[i] < b[j] }

@@ -354,7 +354,7 @@ func (cfg *config) cleanup() {
 
 // attach server i to the net.
 func (cfg *config) connect(i int) {
-	// fmt.Printf("connect(%d)\n", i)
+	fmt.Printf("connect(%d)\n", i)
 
 	cfg.connected[i] = true
 
@@ -377,7 +377,7 @@ func (cfg *config) connect(i int) {
 
 // detach server i from the net.
 func (cfg *config) disconnect(i int) {
-	// fmt.Printf("disconnect(%d)\n", i)
+	fmt.Printf("disconnect(%d)\n", i)
 
 	cfg.connected[i] = false
 
@@ -572,6 +572,7 @@ func (cfg *config) one(cmd interface{}, expectedServers int, retry bool) int {
 					index = index1
 					break
 				}
+				//DPrintf("")
 			}
 		}
 
@@ -583,7 +584,9 @@ func (cfg *config) one(cmd interface{}, expectedServers int, retry bool) int {
 				nd, cmd1 := cfg.nCommitted(index)
 				if nd > 0 && nd >= expectedServers {
 					// committed
+					DPrintf("nCommit return:nd:%d cmd:%+v,cmd1:%+v", nd, cmd, cmd1)
 					if cmd1 == cmd {
+						DPrintf("check whether logs matched:cmd:%+v,cmd1:%+v", cmd, cmd1)
 						// and it was the command we submitted.
 						return index
 					}
