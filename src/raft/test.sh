@@ -12,7 +12,7 @@ fi
 runs=$1
 
 for i in $(seq 1 $runs); do
-    timeout -k 2s 500s go test &
+    timeout -k 2s 500s go test -run=2D &
     pid=$!
     if ! wait $pid; then
         echo '***' FAILED TESTS IN TRIAL $i

@@ -72,7 +72,7 @@ func (rf *Raft) ticker() {
 		rf.unlock()
 		// pause for a random amount of time between 50 and 350
 		// milliseconds.
-		ms := 30 + (rand.Int63() % 30)
+		ms := 40 + (rand.Int63() % 40)
 		time.Sleep(time.Duration(ms) * time.Millisecond)
 	}
 }
@@ -112,7 +112,7 @@ func (rf *Raft) election() {
 			return
 		}
 		if granted <= len(rf.peers)/2 {
-			if granted+len(rf.peers)-voted <= len(rf.peers)/2 {
+			if voted-granted > len(rf.peers)-len(rf.peers)/2 {
 				rf.unlock()
 				return
 			}
@@ -145,39 +145,4 @@ func (rf *Raft) toLeader() {
 	rf.matchIndex[rf.me] = lastindex
 	rf.nextIndex[rf.me] = lastindex + 1
 	rf.broadcast()
-}
-func (rf *Raft) broadcast() {
-	if rf.state == Leader {
-		n := len(rf.peers)
-		for i := 0; i < n; i++ {
-			if i == rf.me {
-				continue
-			}
-			if rf.matchIndex[i] < rf.lastIndex {
-				snapargs := InstallSnapshotArgs{
-					Term:              rf.term,
-					LeaderId:          rf.me,
-					LastIncludedIndex: rf.lastIndex,
-					LastIncludedTerm:  rf.lastTerm,
-					Data:              rf.persister.snapshot,
-				}
-				snapres := InstallSnapshotRes{}
-				go rf.CallInstallSnapshot(i, &snapargs, &snapres)
-
-			} else {
-				entry := make([]Log, rf.getLastIndex()-rf.matchIndex[i])
-				copy(entry, rf.logs[rf.matchIndex[i]+1-rf.lastIndex:])
-				req := AppendEntriesReq{
-					Term:         rf.term,
-					LeaderID:     rf.me,
-					PrevLogIndex: rf.getLastIndex(),
-					PrevLogTerm:  rf.getLogTerm(rf.matchIndex[i]),
-					LeaderCommit: rf.commitIndex,
-					LogEntries:   entry,
-				}
-				reply := AppendEntriesReply{}
-				go rf.SyncLog(i, &req, &reply)
-			}
-		}
-	}
 }

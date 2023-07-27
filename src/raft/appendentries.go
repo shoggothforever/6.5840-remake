@@ -77,7 +77,6 @@ func (rf *Raft) Start(command interface{}) (index, term int, isLeader bool) {
 	log := Log{
 		Command: command,
 		Term:    rf.term,
-		//Index:   rf.getLastIndex() + 1,
 	}
 	rf.logs = append(rf.logs, log)
 	rf.persist()
@@ -193,9 +192,10 @@ func (rf *Raft) CheckCommit() {
 		commit[k] = v
 	}
 	sort.Sort(ByKey(commit))
-	if commit[len(rf.peers)/2] >= rf.lastIndex &&
-		rf.logs[commit[len(rf.peers)/2]-rf.lastIndex].Term == rf.term &&
-		commit[len(rf.peers)/2] > rf.commitIndex {
-		rf.commitIndex = commit[len(rf.peers)/2]
+	midIndex := commit[len(rf.peers)/2]
+	if midIndex >= rf.lastIndex &&
+		rf.logs[midIndex-rf.lastIndex].Term == rf.term &&
+		midIndex > rf.commitIndex {
+		rf.commitIndex = midIndex
 	}
 }

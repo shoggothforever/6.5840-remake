@@ -71,16 +71,19 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
 	rf.lock()
 	defer rf.unlock()
+	//候选人任期落后,直接拒绝
 	if args.Term < rf.term {
 		//DPrintf("[RequestVote node:%d term:%d]disagree candidate%d for term out", rf.me, rf.term, args.CandidateId)
 		reply.Granted = false
 		reply.Term = rf.term
 		return
 	}
+	//根据figure2 投票结果取决于候选人的日志新旧情况
 	if args.LastLogTerm < rf.getLastLogTerm() || (args.LastLogTerm == rf.getLastLogTerm() && args.LastLogIndex < rf.getLastIndex()) {
 		//DPrintf("[RequestVote node:%d term:%d]disagree candidate%d for logs dismatch", rf.me, rf.term, args.CandidateId)
 		reply.Granted = false
 		reply.Term = rf.term
+		//虽然投票者的日志比较新,但是不代表任期没有落后,比如候选人所处的任期更高,但是并未存储该任期以及投票者落后的日期之间的日志,而投票者存储了介于落后的任期和候选人任期之间的日志,那么投票结果任然是失败的
 		if args.Term > rf.term {
 			rf.term = args.Term
 			rf.state = Follower
@@ -88,6 +91,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		}
 		return
 	}
+	//
 	if args.Term > rf.term ||
 		(args.Term == rf.term &&
 			(rf.votedFor == -1 || rf.votedFor == args.CandidateId)) {
@@ -97,6 +101,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		rf.term = args.Term
 		reply.Granted = true
 		reply.Term = rf.term
+		//只有agree时才要重置计时器
 		rf.resetClock()
 		rf.persist()
 	}

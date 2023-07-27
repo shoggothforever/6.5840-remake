@@ -138,8 +138,9 @@ func (rf *Raft) SendHeartBeat(server int, args *AppendEntriesReq, reply *AppendE
 				if args.PrevLogIndex == rf.lastIndex && rf.lastIndex != 0 {
 					args.PrevLogTerm = rf.lastTerm
 				}
-				args.LogEntries = make([]Log, rf.getLastIndex()-args.PrevLogIndex)
-				copy(args.LogEntries, rf.logs[args.PrevLogIndex-rf.lastIndex+1:])
+				entry := make([]Log, rf.getLastIndex()-args.PrevLogIndex)
+				copy(entry, rf.logs[args.PrevLogIndex-rf.lastIndex+1:])
+				args.LogEntries = entry
 				go rf.SyncLog(server, args, reply)
 			}
 		}
@@ -147,10 +148,45 @@ func (rf *Raft) SendHeartBeat(server int, args *AppendEntriesReq, reply *AppendE
 		if rf.matchIndex[server] < args.PrevLogIndex {
 			rf.matchIndex[server] = args.PrevLogIndex
 			rf.CheckCommit()
-
 		}
 		if rf.nextIndex[server] < args.PrevLogIndex+len(args.LogEntries)+1 {
 			rf.nextIndex[server] = args.PrevLogIndex + len(args.LogEntries) + 1
+		}
+	}
+}
+
+func (rf *Raft) broadcast() {
+	if rf.state == Leader {
+		n := len(rf.peers)
+		for i := 0; i < n; i++ {
+			if i == rf.me {
+				continue
+			}
+			if rf.matchIndex[i] < rf.lastIndex {
+				snapargs := InstallSnapshotArgs{
+					Term:              rf.term,
+					LeaderId:          rf.me,
+					LastIncludedIndex: rf.lastIndex,
+					LastIncludedTerm:  rf.lastTerm,
+					Data:              rf.persister.snapshot,
+				}
+				snapres := InstallSnapshotRes{}
+				go rf.CallInstallSnapshot(i, &snapargs, &snapres)
+
+			} else {
+				entry := make([]Log, rf.getLastIndex()-rf.matchIndex[i])
+				copy(entry, rf.logs[rf.matchIndex[i]+1-rf.lastIndex:])
+				req := AppendEntriesReq{
+					Term:         rf.term,
+					LeaderID:     rf.me,
+					PrevLogIndex: rf.getLastIndex(),
+					PrevLogTerm:  rf.getLogTerm(rf.matchIndex[i]),
+					LeaderCommit: rf.commitIndex,
+					LogEntries:   entry,
+				}
+				reply := AppendEntriesReply{}
+				go rf.SyncLog(i, &req, &reply)
+			}
 		}
 	}
 }

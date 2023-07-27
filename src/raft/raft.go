@@ -176,8 +176,6 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.term = 0
 	rf.votedFor = -1
 	rf.state = Follower
-	//rf.lastIndex=0
-	//rf.lastTerm=0
 	rf.applyChan = applyCh
 	rf.matchIndex = make([]int, len(rf.peers))
 	rf.nextIndex = make([]int, len(rf.peers))
